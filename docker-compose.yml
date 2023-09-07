@@ -13,21 +13,14 @@ services:
     volumes:
       - ./volumes/postgresdata:/var/lib/postgresql/data
 
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    container_name: rabbitmq
-    healthcheck:
-      #test: ['CMD', 'rabbitmqctl', 'check_running']
-      test: rabbitmq-diagnostics -q ping
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+  nats:
+    image: nats:latest
+    container_name: nats-server
+    expose:
+      - 8222
     ports:
-      - 5672:5672
-      - 15672:15672
+      - 4222:4222
+      - 8222:8222
 
   intermediary-service:
     build:
@@ -38,8 +31,8 @@ services:
     hostname: intermediary-service
     container_name: intermediary-service
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      nats:
+        condition: service_started
         restart: true
     ports:
       - 3000:3000
@@ -56,8 +49,8 @@ services:
     hostname: order-service
     container_name: order-service
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      nats:
+        condition: service_started
         restart: true
       db:
         condition: service_started
@@ -78,8 +71,8 @@ services:
     hostname: inventory-service
     container_name: inventory-service
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      nats:
+        condition: service_started
         restart: true
       db:
         condition: service_started
@@ -98,8 +91,8 @@ services:
     hostname: logging-service
     container_name: logging-service
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      nats:
+        condition: service_started
         restart: true
       db:
         condition: service_started

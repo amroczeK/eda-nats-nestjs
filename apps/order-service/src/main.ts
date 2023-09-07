@@ -1,10 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { OrderServiceModule } from './order-service.module';
+import { NatsOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
-  const app = await NestFactory.create(OrderServiceModule);
-  await app.listen(3001, () =>
-    console.log('Order Service is listening on port 3001.'),
+  // const app = await NestFactory.createMicroservice(OrderServiceModule);
+  const app = await NestFactory.createMicroservice<NatsOptions>(
+    OrderServiceModule,
+    {
+      transport: Transport.NATS,
+      options: {
+        servers: [process.env.NATS_URI],
+      },
+    },
   );
+  await app.listen();
 }
 bootstrap();

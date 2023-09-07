@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { DatabaseModule } from '@app/common/database/database.module';
-import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import * as Joi from 'joi';
 
 @Module({
@@ -14,8 +14,7 @@ import * as Joi from 'joi';
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
-        RABBIT_MQ_URI: Joi.string().required(),
-        RABBIT_MQ_ORDER_QUEUE: Joi.string().required(),
+        NATS_URI: Joi.string().required(),
         POSTGRES_HOST: Joi.string().required(),
         POSTGRES_PORT: Joi.number().required(),
         POSTGRES_USER: Joi.string().required(),
@@ -24,20 +23,15 @@ import * as Joi from 'joi';
       }),
       envFilePath: './apps/order-service/.env',
     }),
-    RabbitMQModule.forRoot(RabbitMQModule, {
-      exchanges: [
-        {
-          name: 'shop.topic',
-          type: 'topic',
+    ClientsModule.register([
+      {
+        name: 'ORDER_SERVICE',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_URI],
         },
-        {
-          name: 'shop.direct',
-          type: 'direct',
-        },
-      ],
-      uri: process.env.RABBIT_MQ_URI,
-      enableControllerDiscovery: true,
-    }),
+      },
+    ]),
     DatabaseModule,
     TypeOrmModule.forFeature([Order, OrderItem]),
   ],
