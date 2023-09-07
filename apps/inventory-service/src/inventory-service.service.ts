@@ -46,15 +46,13 @@ export class InventoryService {
     }
   }
 
-  async listInventory(): Promise<void> {
+  async listInventory(): Promise<Inventory[]> {
     try {
-      const items = await this.inventoryRepository.find({
+      return this.inventoryRepository.find({
         order: {
           id: 'ASC', // 'ASC' for ascending order, 'DESC' for descending
         },
       });
-      this.logger.log(`Inventory list: ${JSON.stringify(items)}`);
-      // Implement logic to retrieve all items from inventory and send to presentation layer via TCP/Websockets
     } catch (error) {
       this.logger.error(`Error retrieving items in inventory: ${error}`);
     }
@@ -121,7 +119,6 @@ export class InventoryService {
 
   async decrementQuantity(inventoryData: UpdateInventoryDto[]): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
-
     try {
       await queryRunner.connect();
       await queryRunner.startTransaction();

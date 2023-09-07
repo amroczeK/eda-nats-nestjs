@@ -1,10 +1,11 @@
-import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { CreateOrderDto, OrderItemDto } from './dtos/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
+import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class OrderService {
@@ -15,22 +16,19 @@ export class OrderService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
-    private readonly amqpConnection: AmqpConnection,
+    @Inject('ORDER_SERVICE') private client: ClientProxy,
     private readonly dataSource: DataSource,
   ) {}
 
   async createOrder(orderData: CreateOrderDto): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
-
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
       const stockAvailable = await this.validateStockAvailableInInventory(
         orderData,
       );
-
       if (!stockAvailable) throw 'Order has items with unavailable stock.';
-
       this.logger.log(
         `Stock available for all items in order: ${JSON.stringify(orderData)}`,
       );
@@ -40,7 +38,6 @@ export class OrderService {
       order.customer_email = orderData.customer_email;
       order.total_items = calculateTotalOrderedItems(orderData.order_items);
       order.total_value = calculateTotalOrderValue(orderData.order_items);
-
       const orderItems: OrderItem[] = orderData.order_items.map(
         (itemData: OrderItemDto) => {
           const orderItem = new OrderItem();
@@ -50,9 +47,7 @@ export class OrderService {
           return orderItem;
         },
       );
-
       const savedOrderItems = await queryRunner.manager.save(orderItems);
-
       this.logger.log(`Saved order items: ${JSON.stringify(savedOrderItems)}`);
 
       // Associate the saved OrderItem entities with the Order entity
@@ -60,11 +55,9 @@ export class OrderService {
 
       await queryRunner.manager.save(order);
       await queryRunner.commitTransaction();
-
       this.logger.log(`Order created: ${JSON.stringify(order)}.`);
 
-      await this.amqpConnection.publish(
-        'shop.topic',
+      this.client.emit(
         'shop.inventory.decrement.quantity',
         orderData.order_items,
       );
@@ -81,13 +74,12 @@ export class OrderService {
     orderData: CreateOrderDto,
   ): Promise<boolean> {
     try {
-      const result = await this.amqpConnection.request<boolean>({
-        exchange: 'shop.direct',
-        routingKey: 'shop.inventory.check',
-        payload: orderData.order_items,
-        timeout: 10000,
-      });
-      return result;
+      return await firstValueFrom(
+        this.client.send<boolean>(
+          { cmd: 'shop.inventory.check' },
+          orderData.order_items,
+        ),
+      );
     } catch (error) {
       throw error;
     }

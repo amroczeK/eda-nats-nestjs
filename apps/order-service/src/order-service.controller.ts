@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { OrderService } from './order-service.service';
 import { CreateOrderDto } from './dtos/create-order.dto';
-import { RabbitPayload, RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
+import { Ctx, EventPattern, NatsContext, Payload } from '@nestjs/microservices';
 
 @Controller()
 export class OrderServiceController {
@@ -9,13 +9,9 @@ export class OrderServiceController {
 
   constructor(private readonly orderService: OrderService) {}
 
-  @RabbitSubscribe({
-    exchange: 'shop.topic',
-    routingKey: 'shop.order.placed',
-    queue: 'order',
-  })
+  @EventPattern('shop.order.placed')
   async handleOrderPlacedEvent(
-    @RabbitPayload() orderData: CreateOrderDto,
+    @Payload() orderData: CreateOrderDto,
   ): Promise<void> {
     await this.orderService.createOrder(orderData);
   }

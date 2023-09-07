@@ -1,13 +1,13 @@
 import { Controller, Logger } from '@nestjs/common';
 import { InventoryService } from './inventory-service.service';
-import {
-  RabbitPayload,
-  RabbitRPC,
-  RabbitRequest,
-  RabbitSubscribe,
-} from '@golevelup/nestjs-rabbitmq';
-import { IRabbitRequest } from '@app/common/interfaces';
 import { Inventory } from './entities/inventory.entity';
+import {
+  Ctx,
+  EventPattern,
+  MessagePattern,
+  NatsContext,
+  Payload,
+} from '@nestjs/microservices';
 
 @Controller()
 export class InventoryServiceController {
@@ -15,19 +15,14 @@ export class InventoryServiceController {
 
   constructor(private readonly inventoryService: InventoryService) {}
 
-  @RabbitSubscribe({
-    exchange: 'shop.topic',
-    routingKey: 'shop.inventory.#',
-    queue: 'inventory',
-  })
+  @EventPattern('shop.inventory.>')
   async handleInventory(
-    @RabbitPayload()
+    @Payload()
     inventoryData: any,
-    @RabbitRequest() request: IRabbitRequest,
+    @Ctx() context: NatsContext,
   ): Promise<void> {
-    const routingKey = request.fields.routingKey;
-    this.logger.log(`handleInventory(): ${routingKey}`);
-    switch (routingKey) {
+    const subject = context.getSubject();
+    switch (subject) {
       case 'shop.inventory.create': {
         // TODO: Validate payload
         this.inventoryService.createInventory(inventoryData);
@@ -54,21 +49,20 @@ export class InventoryServiceController {
         break;
       }
       default: {
-        this.logger.log(
-          `There is no handler for message with routing key: ${routingKey}`,
-        );
+        this.logger.log(`There is no handler for message subject: ${subject}`);
         break;
       }
     }
   }
 
-  @RabbitRPC({
-    exchange: 'shop.direct',
-    routingKey: 'shop.inventory.check',
-    queue: 'inventory-rpc-queue',
-  })
+  @MessagePattern({ cmd: 'shop.inventory.list' })
+  async handleListInventory(): Promise<Inventory[]> {
+    return this.inventoryService.listInventory();
+  }
+
+  @MessagePattern({ cmd: 'shop.inventory.check' })
   async handleCheckInventory(
-    @RabbitPayload() inventoryData: Inventory[],
+    @Payload() inventoryData: Inventory[],
   ): Promise<boolean> {
     return this.inventoryService.checkInventory(inventoryData);
   }
