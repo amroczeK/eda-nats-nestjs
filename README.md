@@ -1,6 +1,6 @@
 # About
 
-Simple ordering system demonstrating Event Driven Architecture using NestJs for microservices and NATS as the message broker for intercommunication between microservices using wildcard subscriptions, request-response and event-based message styles..
+Simple ordering system demonstrating Event Driven Architecture using NestJs for microservices and NATS as the message broker for intercommunication between microservices using wildcard subscriptions, request-response and event-based message styles.
 
 This repository utilizes NestJs monorepo workspaces to share re-usable code and modules across services, [NATS module](https://docs.nestjs.com/microservices/nats) and [NATS wildcard subscriptions](https://docs.nats.io/using-nats/developer/receiving/wildcards).
 
@@ -9,6 +9,7 @@ This repository utilizes NestJs monorepo workspaces to share re-usable code and 
 <!--ts-->
 
 - [Architecture Diagram](#architecture-diagram)
+- [Context](#context)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
   - [Start applications](#start-applications)
@@ -19,6 +20,19 @@ This repository utilizes NestJs monorepo workspaces to share re-usable code and 
 # Architecture Diagram
 
 ![Architecture Diagram](/docs/architecture.png)
+
+# Context
+This system is using [Subject-Based Messaging](https://docs.nats.io/nats-concepts/subjects) where the publisher sends a message to the NATS server. A subject is just a string of characters that form a name which the publisher and subscriber can use to find each other. The subscribing services use the direct string or wildcards to subscribe to the subjects it wants to listen for.
+
+*Services and their subjects:*
+- *Intermediary service* acts as a publisher, accepting RESTful HTTP requests and then emits/sends a message depending on the message style e.g. request-response or event-based (fire & forget).
+    - Messages to create (fire and forget) an order are emitted by making a POST request to the `/intermediary/order` endpoint.
+    - Messages to retrieve (request-response) a list of inventory by making a GET request to the `/intermediary/inventory` endpoint.
+- *Order service* subscribes to the subject `shop.order.placed` and will perform the following:
+    - Validates stock is available for the order by sending a message to the *Inventory service* using request-response pattern.
+    - Creates an order and stores it in the DB. Once the transaction is committed, it will emit a message to the *Inventory service* (fire and forget) to decrement the stock for those items.
+- *Inventory service* subscribes to subjects using the direct string and wildcards.
+    -
 
 # Installation
 
@@ -65,7 +79,7 @@ After starting up the services via docker from the previous step, you can query 
 
 ```bash
 # Placing an order on the frontend after selecting items to order from the displayed inventory.
-curl -X POST http://localhost:3000/intermediary/order \
+curl -X POST http://localhost:3000/api/order \
      -H "Content-Type: application/json" \
      -d '{
             "customer_name": "Adrian",
@@ -108,7 +122,7 @@ inventory-service     | [Nest] 488  - 09/05/2023, 3:42:27 AM     LOG [InventoryS
 
 ```bash
 # Retrieving all of the inventory items using request-response message style.
-curl -X GET http://localhost:3000/intermediary/inventory \
+curl -X GET http://localhost:3000/api/inventory \
      -H "Content-Type: application/json"
 ```
 

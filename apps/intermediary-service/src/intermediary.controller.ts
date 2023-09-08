@@ -2,7 +2,7 @@ import { Controller, Post, Body, Logger, HttpCode, Get } from '@nestjs/common';
 import { CreateOrderDto } from 'apps/order-service/src/dtos/create-order.dto';
 import { IntermediaryService } from './intermediary.service';
 
-@Controller('intermediary')
+@Controller('api')
 export class IntermediaryController {
   private readonly logger = new Logger(IntermediaryController.name);
 
