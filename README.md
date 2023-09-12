@@ -1,6 +1,6 @@
 # About
 
-Simple ordering system demonstrating Event Driven Architecture using NestJs for microservices and NATS as the message broker for intercommunication between microservices using wildcard subscriptions, request-response and event-based message styles.
+Simple ordering system demonstrating Event Driven Architecture using NestJs for microservices and NATS as the message broker for intercommunication between microservices using subject based messaging, wildcard subscriptions, request-response and event-based message styles.
 
 This repository utilizes NestJs monorepo workspaces to share re-usable code and modules across services, [NATS module](https://docs.nestjs.com/microservices/nats) and [NATS wildcard subscriptions](https://docs.nats.io/using-nats/developer/receiving/wildcards).
 
