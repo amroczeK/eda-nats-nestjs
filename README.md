@@ -31,8 +31,9 @@ This system is using [Subject-Based Messaging](https://docs.nats.io/nats-concept
 - *Order service* subscribes to the subject `shop.order.placed` and will perform the following:
     - Validates stock is available for the order by sending a message to the *Inventory service* using request-response pattern.
     - Creates an order and stores it in the DB. Once the transaction is committed, it will emit a message to the *Inventory service* (fire and forget) to decrement the stock for those items.
-- *Inventory service* subscribes to subjects using the direct string and wildcards.
-    -
+- *Inventory service* subscribes to subjects using the direct string and `*`, `>` [wildcards](https://docs.nats.io/using-nats/developer/receiving/wildcards).
+    - Handler in the controller uses the catch all wildcard and inspects the context and handles the subject.
+    - Handler in the controlelr uses request-response pattern to list inventory to client.
 
 # Installation
 
