@@ -4,7 +4,7 @@ Simple ordering system demonstrating Event Driven Architecture using NestJs for 
 
 This repository utilizes NestJs monorepo workspaces to share re-usable code and modules across services, [NATS module](https://docs.nestjs.com/microservices/nats) and [NATS wildcard subscriptions](https://docs.nats.io/using-nats/developer/receiving/wildcards).
 
-NOTE: This personal project was rushed as a learning/upskilling exercise.
+NOTE: This personal project was rushed as a learning/upskilling exercise and is not production quality.
 
 # Table of contents
 
